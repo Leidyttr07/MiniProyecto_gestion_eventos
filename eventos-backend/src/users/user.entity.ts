@@ -27,4 +27,8 @@ export class User {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  @Column({ nullable: true })
+  @Exclude()
+  refresh_token?: string;
 }

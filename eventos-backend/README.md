@@ -57,6 +57,16 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+### Ejecutar pruebas unitarias rápidas (selectivas)
+
+Para ejecutar sólo las pruebas unitarias que hemos añadido o modificado, puedes ejecutar:
+
+```bash
+npx jest src/registrations/registrations.unit.spec.ts src/events/events.service.spec.ts src/auth/auth.service.spec.ts --runInBand
+```
+
+Esto es útil durante desarrollo para validar cambios sin correr toda la suite.
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
@@ -96,3 +106,77 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+---
+
+## Proyecto: Plataforma de Gestión de Eventos (local)
+
+Este repositorio contiene el backend del mini-proyecto de la asignatura. A continuación se agregan instrucciones específicas para correrlo localmente y resolver conflictos comunes.
+
+### Variables de entorno (usar `.env` o definir en el entorno)
+
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=eventos_db
+
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=3600s
+
+PORT=3000
+```
+
+### Ejecutar en desarrollo
+
+```bash
+cd eventos-backend
+npm install
+npm run start:dev
+```
+
+### Documento OpenAPI (Swagger)
+
+Si `@nestjs/swagger` y `swagger-ui-express` están instalados, la documentación estará disponible en `http://localhost:3000/api`.
+
+### Conflicto de puerto (Windows)
+
+Si al iniciar aparece `EADDRINUSE: address already in use :::3000`, hay un proceso ocupando el puerto. Para identificarlo y finalizarlo:
+
+1. Buscar el PID que usa el puerto 3000:
+
+```powershell
+netstat -ano | findstr :3000
+```
+
+2. Ver el proceso por PID:
+
+```powershell
+tasklist /FI "PID eq <PID>"
+```
+
+3. Finalizar el proceso (si corresponde):
+
+```powershell
+taskkill /PID <PID> /F
+```
+
+Alternativa rápida: iniciar la app en otro puerto:
+
+```powershell
+#$env:PORT=3001; npm run start:dev
+```
+
+Si quieres, puedo ayudarte a crear un script para levantar el backend en un puerto alternativo automáticamente.
+
+### Refresh tokens
+
+Este backend emite `refresh_token` en el endpoint de login. Endpoints disponibles:
+
+- `POST /auth/refresh` — cuerpo `{ "refresh_token": "<token>" }` — devuelve `{ "access_token": "..." }`.
+- `POST /auth/logout` — cuerpo `{ "refresh_token": "<token>" }` — invalida el `refresh_token` en la base de datos.
+
+Notas:
+- En esta implementación los `refresh_token` se almacenan en la tabla `users` en la columna `refresh_token` de forma hashed.
+- Para renovar el `access_token` desde el frontend, enviar el `refresh_token` al endpoint `/auth/refresh` y actualizar el `access_token` local.

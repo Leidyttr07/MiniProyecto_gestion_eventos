@@ -33,4 +33,12 @@ export class UsersService {
   async findById(id: number): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
   }
+
+  async setRefreshToken(id: number, tokenHash: string) {
+    await this.usersRepository.update(id, { refresh_token: tokenHash } as any);
+  }
+
+  async removeRefreshToken(id: number) {
+    await this.usersRepository.update(id, { refresh_token: null } as any);
+  }
 }

@@ -1,10 +1,11 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Param, Body, UseGuards
+  Param, Body, Query, UseGuards
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { FindEventsDto } from './dto/find-events.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -16,8 +17,8 @@ export class EventsController {
 
   // Público
   @Get()
-  findAll() {
-    return this.eventsService.findAll();
+  findAll(@Query() query: FindEventsDto) {
+    return this.eventsService.findAll(query);
   }
 
   @Get(':id')

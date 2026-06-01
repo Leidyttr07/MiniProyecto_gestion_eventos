@@ -16,18 +16,24 @@ export class RegistrationsController {
 
   // Inscribirse a un evento
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('participant')
   create(@Body() dto: CreateRegistrationDto, @CurrentUser() user: any) {
     return this.registrationsService.create(dto, user.id);
   }
 
   // Cancelar inscripción
   @Put(':id/cancel')
+  @UseGuards(RolesGuard)
+  @Roles('participant')
   cancel(@Param('id') id: string, @CurrentUser() user: any) {
     return this.registrationsService.cancel(+id, user.id);
   }
 
   // Ver mis inscripciones
   @Get('my')
+  @UseGuards(RolesGuard)
+  @Roles('participant')
   myRegistrations(@CurrentUser() user: any) {
     return this.registrationsService.findMyRegistrations(user.id);
   }

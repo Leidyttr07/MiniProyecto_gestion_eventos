@@ -4,6 +4,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from './event.entity';
+import { FindEventsDto } from './dto/find-events.dto';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 
@@ -14,11 +15,45 @@ export class EventsService {
     private repo: Repository<Event>,
   ) {}
 
-  findAll() {
-    return this.repo.find({
-      relations: { organizer: true, category: true },
-      order: { start_date: 'ASC' },
-    });
+  async findAll(query?: FindEventsDto) {
+    const qb = this.repo.createQueryBuilder('e')
+      .leftJoinAndSelect('e.organizer', 'organizer')
+      .leftJoinAndSelect('e.category', 'category')
+      .orderBy('e.start_date', 'ASC');
+
+    if (query?.q) {
+      qb.andWhere('(e.title ILIKE :q OR e.description ILIKE :q)', { q: `%${query.q}%` });
+    }
+
+    if (query?.category_id) {
+      qb.andWhere('category.id = :cid', { cid: query.category_id });
+    }
+
+    if (query?.status) {
+      qb.andWhere('e.status = :status', { status: query.status });
+    }
+
+    if (query?.start_date && query?.end_date) {
+      qb.andWhere('e.start_date <= :end AND e.end_date >= :start', {
+        start: query.start_date,
+        end: query.end_date,
+      });
+    } else if (query?.start_date) {
+      qb.andWhere('e.end_date >= :start', { start: query.start_date });
+    } else if (query?.end_date) {
+      qb.andWhere('e.start_date <= :end', { end: query.end_date });
+    }
+
+    // Pagination
+    const page = query?.page ? Number(query.page) : null;
+    const limit = query?.limit ? Number(query.limit) : null;
+    if (page && limit) {
+      const skip = (page - 1) * limit;
+      const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
+      return { data, total, page, limit };
+    }
+
+    return qb.getMany();
   }
 
   async findOne(id: number) {

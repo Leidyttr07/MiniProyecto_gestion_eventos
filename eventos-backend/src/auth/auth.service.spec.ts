@@ -1,18 +1,30 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
+import { UnauthorizedException } from '@nestjs/common';
 
 describe('AuthService', () => {
   let service: AuthService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthService],
-    }).compile();
+  const mockUsersService = {
+    findByEmail: jest.fn(),
+    create: jest.fn(),
+  };
 
-    service = module.get<AuthService>(AuthService);
+  const mockJwtService = {
+    sign: jest.fn().mockReturnValue('token'),
+  };
+
+  beforeEach(() => {
+    service = new AuthService(mockUsersService as any, mockJwtService as any);
   });
+
+  afterEach(() => jest.clearAllMocks());
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('login should throw UnauthorizedException when user not found', async () => {
+    mockUsersService.findByEmail.mockResolvedValue(null);
+    await expect(service.login({ email: 'a@b.com', password: 'pass' } as any)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
