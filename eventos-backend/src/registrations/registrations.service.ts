@@ -16,21 +16,25 @@ export class RegistrationsService {
     private eventsService: EventsService,
   ) {}
 
-  // Inscribirse a un evento
+  private findOneById(id: number) {
+    return this.repo.findOne({
+      where: { id },
+      relations: { user: true, event: true },
+    });
+  }
+
   async create(dto: CreateRegistrationDto, userId: number) {
     const event = await this.eventsService.findOne(dto.event_id);
 
-    // Verificar que el evento esté activo
     if (event.status !== 'active') {
       throw new BadRequestException('El evento no está disponible');
     }
 
-    // Verificar cupos
     if (event.available_spots <= 0) {
       throw new BadRequestException('No hay cupos disponibles');
     }
 
-    // Verificar que no esté ya inscrito
+    // Solo verificar inscripciones activas
     const existing = await this.repo.findOne({
       where: {
         user: { id: userId },
@@ -48,10 +52,10 @@ export class RegistrationsService {
       status: 'active',
     });
 
-    return this.repo.save(registration);
+    const saved = await this.repo.save(registration);
+    return this.findOneById(saved.id);
   }
 
-  // Cancelar inscripción
   async cancel(registrationId: number, userId: number) {
     const registration = await this.repo.findOne({
       where: { id: registrationId },
@@ -62,7 +66,6 @@ export class RegistrationsService {
       throw new NotFoundException('Inscripción no encontrada');
     }
 
-    // Solo el dueño puede cancelar
     if (registration.user.id !== userId) {
       throw new BadRequestException('No tienes permiso para cancelar esta inscripción');
     }
@@ -72,10 +75,10 @@ export class RegistrationsService {
     }
 
     registration.status = 'cancelled';
-    return this.repo.save(registration);
+    const saved = await this.repo.save(registration);
+    return this.findOneById(saved.id);
   }
 
-  // Ver mis inscripciones
   findMyRegistrations(userId: number) {
     return this.repo.find({
       where: { user: { id: userId } },
@@ -84,7 +87,6 @@ export class RegistrationsService {
     });
   }
 
-  // Ver inscripciones de un evento (solo admin)
   findByEvent(eventId: number) {
     return this.repo.find({
       where: { event: { id: eventId }, status: 'active' },

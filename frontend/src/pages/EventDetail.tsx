@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getEvent } from '../api/events';
 import { registerToEvent, cancelRegistration, getMyRegistrations } from '../api/registrations';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/Navbar';
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -14,30 +13,35 @@ const EventDetail = () => {
   const [myRegistration, setMyRegistration] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     getEvent(Number(id))
       .then(res => setEvent(res.data))
       .finally(() => setLoading(false));
 
-    if (isAuthenticated) {
+    if (isAuthenticated && !isAdmin) {
       getMyRegistrations().then(res => {
         const reg = res.data.find((r: any) => r.event.id === Number(id) && r.status === 'active');
         setMyRegistration(reg || null);
       });
     }
-  }, [id, isAuthenticated]);
+  }, [id, isAuthenticated, isAdmin]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     try {
       setActionLoading(true);
+      setMessage('');
+      setIsError(false);
       const res = await registerToEvent(Number(id));
       setMyRegistration(res.data);
       setEvent((e: any) => ({ ...e, available_spots: e.available_spots - 1 }));
       setMessage('¡Inscripción exitosa!');
     } catch (err: any) {
-      setMessage(err.response?.data?.message || 'Error al inscribirse');
+      setIsError(true);
+      const msg = err.response?.data?.message;
+      setMessage(Array.isArray(msg) ? msg.join(', ') : msg || 'Error al inscribirse');
     } finally {
       setActionLoading(false);
     }
@@ -46,11 +50,14 @@ const EventDetail = () => {
   const handleCancel = async () => {
     try {
       setActionLoading(true);
+      setMessage('');
+      setIsError(false);
       await cancelRegistration(myRegistration.id);
       setMyRegistration(null);
       setEvent((e: any) => ({ ...e, available_spots: e.available_spots + 1 }));
-      setMessage('Inscripción cancelada');
+      setMessage('Inscripción cancelada correctamente.');
     } catch (err: any) {
+      setIsError(true);
       setMessage(err.response?.data?.message || 'Error al cancelar');
     } finally {
       setActionLoading(false);
@@ -60,14 +67,18 @@ const EventDetail = () => {
   if (loading) return <div style={styles.loading}>Cargando...</div>;
   if (!event) return <div style={styles.loading}>Evento no encontrado</div>;
 
+  const isFull = event.available_spots <= 0;
+
   return (
     <div style={styles.container}>
-      <Navbar />
+      <nav style={styles.nav}>
+        <h1 style={styles.navTitle}>🎓 Eventos Académicos</h1>
+        <Link to="/events" style={styles.navLink}>← Volver a eventos</Link>
+      </nav>
 
       <main style={styles.main}>
         <div style={styles.card}>
           <div style={styles.header}>
-            <span style={styles.category}>{event.category?.name || 'Sin categoría'}</span>
             <span style={{
               ...styles.status,
               backgroundColor: event.status === 'active' ? '#c6f6d5' : '#fed7d7',
@@ -95,7 +106,7 @@ const EventDetail = () => {
             </div>
             <div style={styles.infoItem}>
               <span style={styles.infoLabel}>👥 Cupos disponibles</span>
-              <span style={{ fontWeight: 700, color: event.available_spots > 0 ? '#276749' : '#c53030' }}>
+              <span style={{ fontWeight: 700, color: isFull ? '#c53030' : '#276749' }}>
                 {event.available_spots} / {event.capacity}
               </span>
             </div>
@@ -103,40 +114,63 @@ const EventDetail = () => {
               <span style={styles.infoLabel}>👤 Organizador</span>
               <span>{event.organizer?.name}</span>
             </div>
+            {event.event_type && (
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>🏷️ Tipo</span>
+                <span>{event.event_type}</span>
+              </div>
+            )}
+            {event.program && (
+              <div style={styles.infoItem}>
+                <span style={styles.infoLabel}>🎓 Programa</span>
+                <span>{event.program}</span>
+              </div>
+            )}
           </div>
 
-          {message && (
-            <div style={{
-              ...styles.message,
-              backgroundColor: message.includes('exitosa') || message.includes('cancelada') ? '#c6f6d5' : '#fed7d7',
-              color: message.includes('exitosa') || message.includes('cancelada') ? '#276749' : '#c53030',
-            }}>
-              {message}
+          {/* Alerta de cupos llenos */}
+          {isFull && !myRegistration && !isAdmin && (
+            <div style={styles.fullAlert}>
+              ⚠️ Este evento ha alcanzado su capacidad máxima de {event.capacity} personas.
+              No es posible realizar nuevas inscripciones.
             </div>
           )}
 
+          {/* Mensaje de éxito o error */}
+          {message && (
+            <div style={{
+              ...styles.message,
+              backgroundColor: isError ? '#fff5f5' : '#c6f6d5',
+              color: isError ? '#c53030' : '#276749',
+              border: `1px solid ${isError ? '#fed7d7' : '#9ae6b4'}`,
+            }}>
+              {isError ? '❌' : '✅'} {message}
+            </div>
+          )}
+
+          {/* Acciones */}
           <div style={styles.actions}>
-            {!isAdmin && (myRegistration ? (
+            {isAdmin ? (
+              <p style={{ color: '#718096', fontSize: '0.9rem' }}>
+                👤 Estás viendo este evento como administrador.
+              </p>
+            ) : myRegistration ? (
               <button
                 style={{ ...styles.button, backgroundColor: '#e53e3e' }}
                 onClick={handleCancel}
                 disabled={actionLoading}
               >
-                {actionLoading ? 'Procesando...' : 'Cancelar inscripción'}
+                {actionLoading ? 'Procesando...' : '❌ Cancelar inscripción'}
               </button>
-            ) : (
+            ) : !isFull ? (
               <button
-                style={{
-                  ...styles.button,
-                  backgroundColor: event.available_spots > 0 ? '#4f46e5' : '#a0aec0',
-                  cursor: event.available_spots > 0 ? 'pointer' : 'not-allowed',
-                }}
+                style={{ ...styles.button, backgroundColor: '#4f46e5' }}
                 onClick={handleRegister}
-                disabled={actionLoading || event.available_spots <= 0}
+                disabled={actionLoading}
               >
-                {actionLoading ? 'Procesando...' : event.available_spots > 0 ? 'Inscribirse' : 'Sin cupos'}
+                {actionLoading ? 'Procesando...' : '✅ Inscribirse'}
               </button>
-            ))}
+            ) : null}
           </div>
         </div>
       </main>
@@ -157,18 +191,22 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'white', borderRadius: '12px',
     padding: '2rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
   },
-  header: { display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' },
-  category: {
-    backgroundColor: '#ebf4ff', color: '#3182ce',
-    padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.85rem',
-  },
+  header: { display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' },
   status: { padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.85rem' },
   title: { margin: '0 0 1rem', color: '#1a202c', fontSize: '1.75rem' },
   description: { color: '#718096', lineHeight: 1.7, marginBottom: '1.5rem' },
   infoGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' },
   infoItem: { display: 'flex', flexDirection: 'column', gap: '0.25rem' },
   infoLabel: { fontWeight: 600, color: '#4a5568', fontSize: '0.85rem' },
-  message: { padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' },
+  fullAlert: {
+    backgroundColor: '#fff5f5', border: '1px solid #fed7d7',
+    color: '#c53030', padding: '1rem', borderRadius: '8px',
+    marginBottom: '1rem', fontSize: '0.9rem', textAlign: 'center',
+  },
+  message: {
+    padding: '0.75rem', borderRadius: '8px',
+    marginBottom: '1rem', fontSize: '0.9rem',
+  },
   actions: { display: 'flex', gap: '1rem' },
   button: {
     padding: '0.75rem 2rem', color: 'white',

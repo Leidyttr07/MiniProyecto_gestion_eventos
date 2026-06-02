@@ -1,66 +1,98 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { getEvents } from '../api/events';
-import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 
 const Events = () => {
   const [events, setEvents] = useState<any[]>([]);
+  const [filtered, setFiltered] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [page, setPage] = useState(1);
-  const limit = 6;
-  const [total, setTotal] = useState(0);
+  const [date, setDate] = useState('');
+  const { isAuthenticated, isAdmin, logoutUser, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        const res = await getEvents({
-          q: search || undefined,
-          status: status || undefined,
-          start_date: startDate || undefined,
-          page,
-          limit,
-        });
-        const payload = res.data;
-        if (payload.data) {
-          setEvents(payload.data);
-          setTotal(payload.total);
-        } else {
-          setEvents(payload);
-          setTotal(payload.length);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+    getEvents()
+      .then(res => {
+        setEvents(res.data);
+        setFiltered(res.data);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-    fetchEvents();
-  }, [search, status, startDate, page, limit]);
+  useEffect(() => {
+    let result = [...events];
+    if (search) {
+      result = result.filter(e =>
+        e.title.toLowerCase().includes(search.toLowerCase()) ||
+        e.description?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    if (status) {
+      result = result.filter(e => e.status === status);
+    }
+    if (date) {
+      result = result.filter(e => {
+        const eventDate = new Date(e.start_date);
+        const filterDate = new Date(date + 'T00:00:00');
+        return (
+          eventDate.getFullYear() === filterDate.getFullYear() &&
+          eventDate.getMonth() === filterDate.getMonth() &&
+          eventDate.getDate() === filterDate.getDate()
+        );
+      });
+    }
+    setFiltered(result);
+  }, [search, status, date, events]);
 
+  const handleClear = () => {
+    setSearch('');
+    setStatus('');
+    setDate('');
+  };
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate('/login');
+  };
 
   return (
     <div style={styles.container}>
-    <Navbar />
+      <nav style={styles.nav}>
+        <h1 style={styles.navTitle}>🎓 Eventos Académicos</h1>
+        <div style={styles.navLinks}>
+          {isAuthenticated ? (
+            <>
+              <span style={styles.navUser}>Hola, {user?.name}</span>
+              {!isAdmin && <Link to="/my-registrations" style={styles.navLink}>Mis Inscripciones</Link>}
+              {isAdmin && <Link to="/admin" style={styles.navLink}>Panel Admin</Link>}
+              <button onClick={handleLogout} style={styles.navButton}>Cerrar Sesión</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" style={styles.navLink}>Iniciar Sesión</Link>
+              <Link to="/register" style={styles.navLink}>Registrarse</Link>
+            </>
+          )}
+        </div>
+      </nav>
 
       <main style={styles.main}>
         <h2 style={styles.title}>Eventos Disponibles</h2>
 
-        <div style={styles.filtersRow}>
+        <div style={styles.filters}>
           <input
-            type="text"
+            style={styles.searchInput}
             placeholder="Buscar eventos..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
+            onChange={e => setSearch(e.target.value)}
           />
           <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
             style={styles.select}
+            value={status}
+            onChange={e => setStatus(e.target.value)}
           >
             <option value="">Todos los estados</option>
             <option value="active">Activo</option>
@@ -68,60 +100,29 @@ const Events = () => {
             <option value="finished">Finalizado</option>
           </select>
           <input
-            type="date"
-            placeholder="Fecha de inicio"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
             style={styles.dateInput}
+            type="date"
+            value={date}
+            onChange={e => setDate(e.target.value)}
           />
-          <button
-            style={styles.clearButton}
-            onClick={() => {
-              setSearch('');
-              setStatus('');
-              setStartDate('');
-              setPage(1);
-            }}
-          >
-            Limpiar
-          </button>
-        </div>
-        <div style={styles.pageControls}>
-          <span style={styles.pageInfo}>Página {page} de {Math.max(1, Math.ceil(total / limit))}</span>
-          <button
-            style={styles.pageButton}
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-          >
-            Anterior
-          </button>
-          <button
-            style={styles.pageButton}
-            disabled={page >= Math.ceil(total / limit)}
-            onClick={() => setPage((prev) => prev + 1)}
-          >
-            Siguiente
-          </button>
+          <button style={styles.clearBtn} onClick={handleClear}>Limpiar</button>
         </div>
 
         {loading ? (
-          <p style={styles.loading}>Cargando eventos...</p>
-        ) : events.length === 0 ? (
+          <p style={styles.empty}>Cargando eventos...</p>
+        ) : filtered.length === 0 ? (
           <p style={styles.empty}>No hay eventos disponibles por el momento.</p>
         ) : (
           <div style={styles.grid}>
-            {events.map(event => (
+            {filtered.map(event => (
               <div key={event.id} style={styles.card}>
                 <div style={styles.cardHeader}>
-                  <span style={styles.category}>
-                    {event.category?.name || 'Sin categoría'}
-                  </span>
                   <span style={{
                     ...styles.status,
                     backgroundColor: event.status === 'active' ? '#c6f6d5' : '#fed7d7',
                     color: event.status === 'active' ? '#276749' : '#c53030',
                   }}>
-                    {event.status === 'active' ? 'Activo' : event.status}
+                    {event.status === 'active' ? 'Activo' : event.status === 'cancelled' ? 'Cancelado' : 'Finalizado'}
                   </span>
                 </div>
                 <h3 style={styles.cardTitle}>{event.title}</h3>
@@ -132,6 +133,8 @@ const Events = () => {
                   })}</span>
                   <span>📍 {event.location || 'Por definir'}</span>
                   <span>👥 {event.available_spots} cupos disponibles</span>
+                  {event.event_type && <span>🏷️ {event.event_type}</span>}
+                  {event.program && <span>🎓 {event.program}</span>}
                 </div>
                 <button
                   style={styles.cardButton}
@@ -157,39 +160,35 @@ const styles: Record<string, React.CSSProperties> = {
   navTitle: { color: 'white', margin: 0, fontSize: '1.25rem' },
   navLinks: { display: 'flex', gap: '1rem', alignItems: 'center' },
   navLink: { color: 'white', textDecoration: 'none', fontSize: '0.9rem' },
+  navUser: { color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' },
   navButton: {
     backgroundColor: 'transparent', color: 'white',
     border: '1px solid white', borderRadius: '6px',
     padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.9rem',
   },
   main: { padding: '2rem' },
-  title: { color: '#1a202c', marginBottom: '1rem' },
-  filtersRow: {
-    display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem',
-  },
+  title: { color: '#1a202c', marginBottom: '1.5rem' },
+  filters: { display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' },
   searchInput: {
-    flex: 1, minWidth: '220px', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #cbd5e0',
+    flex: 2, padding: '0.6rem 0.75rem',
+    border: '1px solid #e2e8f0', borderRadius: '8px',
+    fontSize: '0.9rem', minWidth: '200px',
   },
   select: {
-    padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #cbd5e0', backgroundColor: 'white', minWidth: '180px',
+    flex: 1, padding: '0.6rem 0.75rem',
+    border: '1px solid #e2e8f0', borderRadius: '8px',
+    fontSize: '0.9rem', backgroundColor: 'white',
   },
   dateInput: {
-    padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid #cbd5e0', backgroundColor: 'white', minWidth: '170px',
+    flex: 1, padding: '0.6rem 0.75rem',
+    border: '1px solid #e2e8f0', borderRadius: '8px',
+    fontSize: '0.9rem',
   },
-  searchButton: {
-    padding: '0.75rem 1.5rem', borderRadius: '12px', border: 'none', backgroundColor: '#4f46e5', color: 'white', cursor: 'pointer',
+  clearBtn: {
+    padding: '0.6rem 1.25rem', backgroundColor: 'white',
+    border: '1px solid #e2e8f0', borderRadius: '8px',
+    cursor: 'pointer', fontSize: '0.9rem', color: '#4a5568',
   },
-  clearButton: {
-    padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid #cbd5e0', backgroundColor: 'white', color: '#4a5568', cursor: 'pointer',
-  },
-  pageControls: {
-    display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1.25rem',
-  },
-  pageInfo: { color: '#4a5568', fontSize: '0.95rem' },
-  pageButton: {
-    padding: '0.65rem 1rem', backgroundColor: '#4f46e5', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer',
-  },
-  loading: { color: '#718096', textAlign: 'center', marginTop: '2rem' },
   empty: { color: '#718096', textAlign: 'center', marginTop: '2rem' },
   grid: {
     display: 'grid',
@@ -201,11 +200,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
     display: 'flex', flexDirection: 'column', gap: '0.75rem',
   },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  category: {
-    backgroundColor: '#ebf4ff', color: '#3182ce',
-    padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem',
-  },
+  cardHeader: { display: 'flex', justifyContent: 'flex-end' },
   status: { padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' },
   cardTitle: { margin: 0, color: '#1a202c', fontSize: '1.1rem' },
   cardDesc: { margin: 0, color: '#718096', fontSize: '0.9rem', lineHeight: 1.5 },

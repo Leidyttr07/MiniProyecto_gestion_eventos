@@ -1,51 +1,52 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn,
-  ManyToOne, OneToMany, JoinColumn
+  ManyToOne, JoinColumn
 } from 'typeorm';
 import { User } from '../users/user.entity';
-import { Category } from '../categories/category.entity';
 
 @Entity('events')
 export class Event {
   @PrimaryGeneratedColumn()
-  id: number;
+  id: number = 0;
 
   @Column({ length: 200 })
-  title: string;
+  title: string = '';
 
   @Column({ nullable: true })
-  description: string;
+  description: string = '';
 
   @Column()
-  start_date: Date;
+  start_date: Date = new Date();
 
   @Column()
-  end_date: Date;
+  end_date: Date = new Date();
 
   @Column({ nullable: true })
-  location: string;
+  location: string = '';
 
   @Column({ default: 30 })
-  capacity: number;
+  capacity: number = 30;
 
   @Column({ default: 30 })
-  available_spots: number;
+  available_spots: number = 30;
 
   @Column({ default: 'active' })
-  status: 'active' | 'cancelled' | 'finished';
-
-  @ManyToOne(() => Category, { nullable: true, eager: true })
-  @JoinColumn({ name: 'category_id' })
-  category: Category;
+  status: string = 'active';
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'organizer_id' })
   organizer: User;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at: Date = new Date();
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at: Date = new Date();
+
+  @Column({ nullable: true })
+  event_type: string = '';
+
+  @Column({ nullable: true })
+  program: string = '';
 }

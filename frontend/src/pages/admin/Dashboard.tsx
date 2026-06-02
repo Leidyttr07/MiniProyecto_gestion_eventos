@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getEvents, deleteEvent } from '../../api/events';
-import Navbar from '../../components/Navbar';
+import { Link, useNavigate } from 'react-router-dom';
+import { getEvents, deleteEvent, cancelEvent } from '../../api/events';
+import { useAuth } from '../../context/AuthContext';
 
 const Dashboard = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { logoutUser } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     getEvents()
@@ -14,7 +16,7 @@ const Dashboard = () => {
   }, []);
 
   const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`¿Eliminar el evento "${title}"?`)) return;
+    if (!confirm(`¿Eliminar el evento "${title}"? Esta acción no se puede deshacer.`)) return;
     try {
       await deleteEvent(id);
       setEvents(prev => prev.filter(e => e.id !== id));
@@ -23,6 +25,18 @@ const Dashboard = () => {
     }
   };
 
+  const handleCancel = async (id: number, title: string) => {
+    if (!confirm(`¿Cancelar el evento "${title}"? Los participantes verán el evento como cancelado.`)) return;
+    try {
+      await cancelEvent(id);
+      setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' } : e));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Error al cancelar');
+    }
+  };
+
+  const handleLogout = () => { logoutUser(); navigate('/login'); };
+
   const totalEvents = events.length;
   const activeEvents = events.filter(e => e.status === 'active').length;
   const totalCapacity = events.reduce((sum, e) => sum + e.capacity, 0);
@@ -30,9 +44,15 @@ const Dashboard = () => {
 
   return (
     <div style={styles.container}>
-    <Navbar />
+      <nav style={styles.nav}>
+        <h1 style={styles.navTitle}>🎓 Panel Administrador</h1>
+        <div style={styles.navLinks}>
+          <Link to="/events" style={styles.navLink}>Ver sitio</Link>
+          <button onClick={handleLogout} style={styles.navButton}>Cerrar Sesión</button>
+        </div>
+      </nav>
+
       <main style={styles.main}>
-        {/* Estadísticas */}
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
             <span style={styles.statNumber}>{totalEvents}</span>
@@ -52,7 +72,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Encabezado de tabla */}
         <div style={styles.tableHeader}>
           <h2 style={styles.tableTitle}>Gestión de Eventos</h2>
           <Link to="/admin/events/new" style={styles.createBtn}>+ Crear evento</Link>
@@ -79,7 +98,9 @@ const Dashboard = () => {
                   <tr key={event.id} style={styles.tr}>
                     <td style={styles.td}>
                       <div style={styles.eventName}>{event.title}</div>
-                      <div style={styles.eventCategory}>{event.category?.name || 'Sin categoría'}</div>
+                      <div style={styles.eventCategory}>
+                        {event.event_type || 'Sin tipo'} — {event.program || 'Sin programa'}
+                      </div>
                     </td>
                     <td style={styles.td}>
                       {new Date(event.start_date).toLocaleDateString('es-CO', {
@@ -97,10 +118,10 @@ const Dashboard = () => {
                     <td style={styles.td}>
                       <span style={{
                         ...styles.badge,
-                        backgroundColor: event.status === 'active' ? '#c6f6d5' : '#fed7d7',
-                        color: event.status === 'active' ? '#276749' : '#c53030',
+                        backgroundColor: event.status === 'active' ? '#c6f6d5' : event.status === 'cancelled' ? '#fed7d7' : '#e2e8f0',
+                        color: event.status === 'active' ? '#276749' : event.status === 'cancelled' ? '#c53030' : '#4a5568',
                       }}>
-                        {event.status === 'active' ? 'Activo' : event.status}
+                        {event.status === 'active' ? 'Activo' : event.status === 'cancelled' ? 'Cancelado' : 'Finalizado'}
                       </span>
                     </td>
                     <td style={styles.td}>
@@ -108,6 +129,14 @@ const Dashboard = () => {
                         <Link to={`/admin/events/${event.id}/edit`} style={styles.editBtn}>
                           Editar
                         </Link>
+                        {event.status === 'active' && (
+                          <button
+                            style={styles.cancelBtn}
+                            onClick={() => handleCancel(event.id, event.title)}
+                          >
+                            Cancelar
+                          </button>
+                        )}
                         <button
                           style={styles.deleteBtn}
                           onClick={() => handleDelete(event.id, event.title)}
@@ -184,6 +213,11 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0.35rem 0.75rem', backgroundColor: '#ebf8ff',
     color: '#2b6cb0', borderRadius: '6px',
     textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600,
+  },
+  cancelBtn: {
+    padding: '0.35rem 0.75rem', backgroundColor: '#fffbeb',
+    color: '#b7791f', border: 'none', borderRadius: '6px',
+    cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
   },
   deleteBtn: {
     padding: '0.35rem 0.75rem', backgroundColor: '#fff5f5',

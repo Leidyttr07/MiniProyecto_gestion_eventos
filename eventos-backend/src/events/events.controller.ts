@@ -17,8 +17,8 @@ export class EventsController {
 
   // Público
   @Get()
-  findAll(@Query() query: FindEventsDto) {
-    return this.eventsService.findAll(query);
+  findAll() {
+    return this.eventsService.findAll();
   }
 
   @Get(':id')
@@ -46,5 +46,11 @@ export class EventsController {
   @Roles('admin')
   remove(@Param('id') id: string) {
     return this.eventsService.remove(+id);
+  }
+  @Put(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  cancelEvent(@Param('id') id: string) {
+    return this.eventsService.cancelEvent(+id);
   }
 }

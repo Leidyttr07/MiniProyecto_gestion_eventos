@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { getEvent, createEvent, updateEvent } from '../../api/events';
-import api from '../../api/client';
-import Navbar from '../../components/Navbar';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { createEvent, updateEvent, getEvent } from '../../api/events';
+import { useEffect, useState } from 'react';
 
 interface EventFormData {
   title: string;
@@ -12,22 +10,20 @@ interface EventFormData {
   end_date: string;
   location: string;
   capacity: number;
-  category_id?: number;
+  event_type: string;
+  program: string;
 }
 
 const EventForm = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const isEditing = !!id;
-  const [categories, setCategories] = useState<any[]>([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EventFormData>();
 
   useEffect(() => {
-    api.get('/categories').then(res => setCategories(res.data));
-
     if (isEditing) {
       getEvent(Number(id)).then(res => {
         const e = res.data;
@@ -38,7 +34,6 @@ const EventForm = () => {
           end_date: e.end_date?.slice(0, 16),
           location: e.location,
           capacity: e.capacity,
-          category_id: e.category?.id,
         });
       });
     }
@@ -63,7 +58,11 @@ const EventForm = () => {
 
   return (
     <div style={styles.container}>
-    <Navbar />
+      <nav style={styles.nav}>
+        <h1 style={styles.navTitle}>🎓 Panel Administrador</h1>
+        <Link to="/admin" style={styles.navLink}>← Volver al panel</Link>
+      </nav>
+
       <main style={styles.main}>
         <div style={styles.card}>
           <h2 style={styles.title}>{isEditing ? 'Editar Evento' : 'Crear Nuevo Evento'}</h2>
@@ -72,10 +71,10 @@ const EventForm = () => {
 
           <form onSubmit={handleSubmit(onSubmit)}>
             <div style={styles.field}>
-              <label style={styles.label}>Título *</label>
+              <label style={styles.label}>Título del evento</label>
               <input
                 style={styles.input}
-                placeholder="Nombre del evento"
+                placeholder="Ej: Seminario de Inteligencia Artificial"
                 {...register('title', { required: 'El título es obligatorio' })}
               />
               {errors.title && <span style={styles.fieldError}>{errors.title.message}</span>}
@@ -84,28 +83,29 @@ const EventForm = () => {
             <div style={styles.field}>
               <label style={styles.label}>Descripción</label>
               <textarea
-                style={{ ...styles.input, height: '100px', resize: 'vertical' }}
-                placeholder="Descripción del evento"
+                style={{ ...styles.input, minHeight: '100px', resize: 'vertical' }}
+                placeholder="Descripción del evento..."
                 {...register('description')}
               />
             </div>
 
             <div style={styles.row}>
               <div style={styles.field}>
-                <label style={styles.label}>Fecha inicio *</label>
+                <label style={styles.label}>Fecha y hora de inicio</label>
                 <input
                   style={styles.input}
                   type="datetime-local"
-                  {...register('start_date', { required: 'Requerido' })}
+                  {...register('start_date', { required: 'La fecha de inicio es obligatoria' })}
                 />
                 {errors.start_date && <span style={styles.fieldError}>{errors.start_date.message}</span>}
               </div>
+
               <div style={styles.field}>
-                <label style={styles.label}>Fecha fin *</label>
+                <label style={styles.label}>Fecha y hora de fin</label>
                 <input
                   style={styles.input}
                   type="datetime-local"
-                  {...register('end_date', { required: 'Requerido' })}
+                  {...register('end_date', { required: 'La fecha de fin es obligatoria' })}
                 />
                 {errors.end_date && <span style={styles.fieldError}>{errors.end_date.message}</span>}
               </div>
@@ -116,40 +116,53 @@ const EventForm = () => {
                 <label style={styles.label}>Lugar</label>
                 <input
                   style={styles.input}
-                  placeholder="Auditorio, sala, etc."
+                  placeholder="Ej: Auditorio principal"
                   {...register('location')}
                 />
               </div>
+
               <div style={styles.field}>
-                <label style={styles.label}>Capacidad *</label>
+                <label style={styles.label}>Capacidad</label>
                 <input
                   style={styles.input}
                   type="number"
                   min={1}
                   placeholder="Ej: 50"
                   {...register('capacity', {
-                    required: 'Requerido',
+                    required: 'La capacidad es obligatoria',
+                    min: { value: 1, message: 'Mínimo 1 persona' },
                     valueAsNumber: true,
-                    min: { value: 1, message: 'Mínimo 1' }
                   })}
                 />
                 {errors.capacity && <span style={styles.fieldError}>{errors.capacity.message}</span>}
               </div>
             </div>
+                  <div style={styles.row}>
+  <div style={styles.field}>
+    <label style={styles.label}>Tipo de evento</label>
+    <select style={styles.input} {...register('event_type')}>
+      <option value="">Seleccionar...</option>
+      <option value="Seminario">Seminario</option>
+      <option value="Taller">Taller</option>
+      <option value="Conferencia">Conferencia</option>
+    </select>
+  </div>
 
-            <div style={styles.field}>
-              <label style={styles.label}>Categoría</label>
-              <select style={styles.input} {...register('category_id', { valueAsNumber: true })}>
-                <option value="">Sin categoría</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-
+  <div style={styles.field}>
+      <label style={styles.label}>Programa académico</label>
+      <select style={styles.input} {...register('program')}>
+        <option value="">Seleccionar...</option>
+        <option value="Ingeniería Automática Industrial">Ingeniería Automática Industrial</option>
+        <option value="Ingeniería Electrónica y Telecomunicaciones">Ingeniería Electrónica y Telecomunicaciones</option>
+        <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+      </select>
+    </div>
+  </div>
             <div style={styles.buttons}>
-              <Link to="/admin" style={styles.cancelBtn}>Cancelar</Link>
-              <button style={styles.submitBtn} type="submit" disabled={loading}>
+              <button type="button" style={styles.cancelBtn} onClick={() => navigate('/admin')}>
+                Cancelar
+              </button>
+              <button type="submit" style={styles.submitBtn} disabled={loading}>
                 {loading ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Crear evento'}
               </button>
             </div>
@@ -176,7 +189,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: { margin: '0 0 1.5rem', color: '#1a202c' },
   error: {
     backgroundColor: '#fed7d7', color: '#c53030',
-    padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem',
+    padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem',
   },
   field: { marginBottom: '1.25rem', flex: 1 },
   row: { display: 'flex', gap: '1rem' },
@@ -185,18 +198,19 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%', padding: '0.6rem 0.75rem',
     border: '1px solid #e2e8f0', borderRadius: '8px',
     fontSize: '1rem', boxSizing: 'border-box',
+    fontFamily: 'inherit',
   },
   fieldError: { color: '#e53e3e', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' },
-  buttons: { display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' },
+  buttons: { display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' },
   cancelBtn: {
-    padding: '0.75rem 1.5rem', backgroundColor: '#edf2f7',
-    color: '#4a5568', borderRadius: '8px',
-    textDecoration: 'none', fontWeight: 600, fontSize: '0.95rem',
+    padding: '0.75rem 1.5rem', backgroundColor: 'white',
+    color: '#4a5568', border: '1px solid #e2e8f0',
+    borderRadius: '8px', cursor: 'pointer', fontSize: '1rem',
   },
   submitBtn: {
     padding: '0.75rem 1.5rem', backgroundColor: '#4f46e5',
     color: 'white', border: 'none', borderRadius: '8px',
-    fontSize: '0.95rem', fontWeight: 600, cursor: 'pointer',
+    cursor: 'pointer', fontSize: '1rem', fontWeight: 600,
   },
 };
 

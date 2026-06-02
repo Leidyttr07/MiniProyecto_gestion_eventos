@@ -1,22 +1,22 @@
 import {
   IsString, IsDateString, IsInt,
-  IsOptional, IsPositive, MaxLength, Min
+  IsOptional, IsPositive, MaxLength
 } from 'class-validator';
 
 export class CreateEventDto {
   @IsString()
   @MaxLength(200)
-  title: string;
+  title: string = '';
 
   @IsString()
   @IsOptional()
   description?: string;
 
   @IsDateString()
-  start_date: string;
+  start_date: string = '';
 
   @IsDateString()
-  end_date: string;
+  end_date: string = '';
 
   @IsString()
   @IsOptional()
@@ -24,9 +24,13 @@ export class CreateEventDto {
 
   @IsInt()
   @IsPositive()
-  capacity: number;
+  capacity: number = 30;
 
-  @IsInt()
+  @IsString()
   @IsOptional()
-  category_id?: number;
+  event_type?: string;
+
+  @IsString()
+  @IsOptional()
+  program?: string;
 }
