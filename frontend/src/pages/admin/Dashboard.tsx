@@ -2,21 +2,20 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getEvents, deleteEvent, cancelEvent } from '../../api/events';
 import { useAuth } from '../../context/AuthContext';
+import Navbar from '../../components/Navbar';
 
 const Dashboard = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { logoutUser } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    getEvents()
-      .then(res => setEvents(res.data))
-      .finally(() => setLoading(false));
+    getEvents().then(res => setEvents(res.data)).finally(() => setLoading(false));
   }, []);
 
   const handleDelete = async (id: number, title: string) => {
-    if (!confirm(`¿Eliminar el evento "${title}"? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`)) return;
     try {
       await deleteEvent(id);
       setEvents(prev => prev.filter(e => e.id !== id));
@@ -26,7 +25,7 @@ const Dashboard = () => {
   };
 
   const handleCancel = async (id: number, title: string) => {
-    if (!confirm(`¿Cancelar el evento "${title}"? Los participantes verán el evento como cancelado.`)) return;
+    if (!confirm(`¿Cancelar "${title}"? Los participantes verán el evento como cancelado.`)) return;
     try {
       await cancelEvent(id);
       setEvents(prev => prev.map(e => e.id === id ? { ...e, status: 'cancelled' } : e));
@@ -35,196 +34,290 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => { logoutUser(); navigate('/login'); };
-
   const totalEvents = events.length;
   const activeEvents = events.filter(e => e.status === 'active').length;
+  const cancelledEvents = events.filter(e => e.status === 'cancelled').length;
   const totalCapacity = events.reduce((sum, e) => sum + e.capacity, 0);
   const totalRegistered = events.reduce((sum, e) => sum + (e.capacity - e.available_spots), 0);
+  const occupancy = totalCapacity > 0 ? Math.round((totalRegistered / totalCapacity) * 100) : 0;
+
+  const statusColor: Record<string, React.CSSProperties> = {
+    active: { background: 'rgba(16,185,129,0.12)', color: '#10b981' },
+    cancelled: { background: 'rgba(239,68,68,0.12)', color: '#ef4444' },
+    finished: { background: 'rgba(100,116,139,0.12)', color: '#64748b' },
+  };
+  const statusLabel: Record<string, string> = {
+    active: 'Activo', cancelled: 'Cancelado', finished: 'Finalizado'
+  };
 
   return (
-    <div style={styles.container}>
-      <nav style={styles.nav}>
-        <h1 style={styles.navTitle}>🎓 Panel Administrador</h1>
-        <div style={styles.navLinks}>
-          <Link to="/events" style={styles.navLink}>Ver sitio</Link>
-          <button onClick={handleLogout} style={styles.navButton}>Cerrar Sesión</button>
-        </div>
-      </nav>
+    <div style={s.page}>
+      <div style={s.bgOrb1} /><div style={s.bgOrb2} />
+      <Navbar />
 
-      <main style={styles.main}>
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <span style={styles.statNumber}>{totalEvents}</span>
-            <span style={styles.statLabel}>Total eventos</span>
+      <main style={s.main}>
+        {/* Header */}
+        <div style={s.header}>
+          <div>
+            <p style={s.eyebrow}>Panel de administración</p>
+            <h1 style={s.title}>Bienvenido, {user?.name?.split(' ')[0]}</h1>
+            <p style={s.subtitle}>Gestiona todos los eventos académicos desde aquí</p>
           </div>
-          <div style={styles.statCard}>
-            <span style={styles.statNumber}>{activeEvents}</span>
-            <span style={styles.statLabel}>Eventos activos</span>
-          </div>
-          <div style={styles.statCard}>
-            <span style={styles.statNumber}>{totalRegistered}</span>
-            <span style={styles.statLabel}>Inscripciones totales</span>
-          </div>
-          <div style={styles.statCard}>
-            <span style={styles.statNumber}>{totalCapacity}</span>
-            <span style={styles.statLabel}>Capacidad total</span>
-          </div>
+          <Link to="/admin/events/new" style={s.createBtn}>
+            + Crear evento
+          </Link>
         </div>
 
-        <div style={styles.tableHeader}>
-          <h2 style={styles.tableTitle}>Gestión de Eventos</h2>
-          <Link to="/admin/events/new" style={styles.createBtn}>+ Crear evento</Link>
+        {/* Stats */}
+        <div style={s.statsGrid}>
+          {[
+            { icon: '📋', value: totalEvents, label: 'Total eventos', sub: `${activeEvents} activos`, color: '#6366f1', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.2)' },
+            { icon: '✅', value: activeEvents, label: 'Eventos activos', sub: `${cancelledEvents} cancelados`, color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.2)' },
+            { icon: '👥', value: totalRegistered, label: 'Inscripciones', sub: `de ${totalCapacity} cupos`, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.2)' },
+            { icon: '📊', value: `${occupancy}%`, label: 'Ocupación', sub: 'promedio general', color: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.2)' },
+          ].map(({ icon, value, label, sub, color, bg, border }) => (
+            <div key={label} style={{ ...s.statCard, background: bg, border: `1px solid ${border}` }}>
+              <div style={s.statTop}>
+                <span style={s.statIcon}>{icon}</span>
+                <span style={{ ...s.statValue, color }}>{value}</span>
+              </div>
+              <p style={s.statLabel}>{label}</p>
+              <p style={s.statSub}>{sub}</p>
+            </div>
+          ))}
         </div>
 
-        {loading ? (
-          <p style={styles.empty}>Cargando eventos...</p>
-        ) : events.length === 0 ? (
-          <p style={styles.empty}>No hay eventos creados.</p>
-        ) : (
-          <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.thead}>
-                  <th style={styles.th}>Evento</th>
-                  <th style={styles.th}>Fecha</th>
-                  <th style={styles.th}>Cupos</th>
-                  <th style={styles.th}>Estado</th>
-                  <th style={styles.th}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map(event => (
-                  <tr key={event.id} style={styles.tr}>
-                    <td style={styles.td}>
-                      <div style={styles.eventName}>{event.title}</div>
-                      <div style={styles.eventCategory}>
-                        {event.event_type || 'Sin tipo'} — {event.program || 'Sin programa'}
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      {new Date(event.start_date).toLocaleDateString('es-CO', {
-                        day: 'numeric', month: 'short', year: 'numeric'
-                      })}
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        fontWeight: 700,
-                        color: event.available_spots > 0 ? '#276749' : '#c53030'
-                      }}>
-                        {event.available_spots}/{event.capacity}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{
-                        ...styles.badge,
-                        backgroundColor: event.status === 'active' ? '#c6f6d5' : event.status === 'cancelled' ? '#fed7d7' : '#e2e8f0',
-                        color: event.status === 'active' ? '#276749' : event.status === 'cancelled' ? '#c53030' : '#4a5568',
-                      }}>
-                        {event.status === 'active' ? 'Activo' : event.status === 'cancelled' ? 'Cancelado' : 'Finalizado'}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={styles.actions}>
-                        <Link to={`/admin/events/${event.id}/edit`} style={styles.editBtn}>
-                          Editar
-                        </Link>
-                        {event.status === 'active' && (
-                          <button
-                            style={styles.cancelBtn}
-                            onClick={() => handleCancel(event.id, event.title)}
-                          >
-                            Cancelar
-                          </button>
-                        )}
-                        <button
-                          style={styles.deleteBtn}
-                          onClick={() => handleDelete(event.id, event.title)}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
+        {/* Barra de ocupación */}
+        <div style={s.occupancyCard}>
+          <div style={s.occupancyHeader}>
+            <span style={s.occupancyLabel}>Ocupación general de todos los eventos</span>
+            <span style={{ ...s.occupancyPct, color: occupancy > 80 ? '#ef4444' : occupancy > 50 ? '#f59e0b' : '#10b981' }}>
+              {occupancy}%
+            </span>
+          </div>
+          <div style={s.barBg}>
+            <div style={{
+              ...s.barFill,
+              width: `${occupancy}%`,
+              background: occupancy > 80 ? 'linear-gradient(90deg,#ef4444,#dc2626)' : occupancy > 50 ? 'linear-gradient(90deg,#f59e0b,#d97706)' : 'linear-gradient(90deg,#10b981,#059669)',
+            }} />
+          </div>
+          <div style={s.occupancyFooter}>
+            <span style={s.occupancySub}>{totalRegistered} personas inscritas de {totalCapacity} cupos totales</span>
+            <span style={s.occupancySub}>{totalCapacity - totalRegistered} cupos disponibles</span>
+          </div>
+        </div>
+
+        {/* Tabla */}
+        <div style={s.tableSection}>
+          <h2 style={s.tableTitle}>Gestión de eventos</h2>
+
+          {loading ? (
+            <div style={s.loadingWrap}>
+              {[1,2,3].map(i => <div key={i} style={s.skeleton} />)}
+            </div>
+          ) : events.length === 0 ? (
+            <div style={s.empty}>
+              <div style={s.emptyIcon}>📭</div>
+              <p style={s.emptyText}>No hay eventos creados aún</p>
+              <Link to="/admin/events/new" style={s.createBtn}>+ Crear primer evento</Link>
+            </div>
+          ) : (
+            <div style={s.tableWrap}>
+              <table style={s.table}>
+                <thead>
+                  <tr>
+                    {['Evento', 'Fecha', 'Ocupación', 'Estado', 'Acciones'].map(h => (
+                      <th key={h} style={s.th}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </thead>
+                <tbody>
+                  {events.map(event => {
+                    const reg = event.capacity - event.available_spots;
+                    const pct = Math.round((reg / event.capacity) * 100);
+                    return (
+                      <tr key={event.id} style={s.tr}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <td style={s.td}>
+                          <p style={s.eventName}>{event.title}</p>
+                          <div style={s.eventTags}>
+                            {event.event_type && <span style={s.tag}>{event.event_type}</span>}
+                            {event.program && <span style={s.tag}>{event.program}</span>}
+                          </div>
+                        </td>
+                        <td style={s.td}>
+                          <p style={s.dateText}>
+                            {new Date(event.start_date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                          <p style={s.locationText}>📍 {event.location || 'Por definir'}</p>
+                        </td>
+                        <td style={s.td}>
+                          <div style={s.occWrap}>
+                            <span style={{
+                              ...s.occCount,
+                              color: pct >= 100 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981'
+                            }}>
+                              {reg}/{event.capacity}
+                            </span>
+                            <div style={s.miniBarBg}>
+                              <div style={{
+                                ...s.miniBarFill,
+                                width: `${pct}%`,
+                                background: pct >= 100 ? '#ef4444' : pct > 70 ? '#f59e0b' : '#10b981',
+                              }} />
+                            </div>
+                            <span style={s.pctText}>{pct}%</span>
+                          </div>
+                        </td>
+                        <td style={s.td}>
+                          <span style={{ ...s.statusBadge, ...statusColor[event.status] }}>
+                            ● {statusLabel[event.status] || event.status}
+                          </span>
+                        </td>
+                        <td style={s.td}>
+                          <div style={s.actions}>
+                            <button style={s.editBtn} onClick={() => navigate(`/admin/events/${event.id}/edit`)}>
+                              ✏️ Editar
+                            </button>
+                            {event.status === 'active' && (
+                              <button style={s.cancelBtn} onClick={() => handleCancel(event.id, event.title)}>
+                                ⏸ Cancelar
+                              </button>
+                            )}
+                            <button style={s.deleteBtn} onClick={() => handleDelete(event.id, event.title)}>
+                              🗑
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );
 };
 
-const styles: Record<string, React.CSSProperties> = {
-  container: { minHeight: '100vh', backgroundColor: '#f0f4f8' },
-  nav: {
-    backgroundColor: '#4f46e5', padding: '1rem 2rem',
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+const s: Record<string, React.CSSProperties> = {
+  page: { minHeight: '100vh', background: '#0f0c29', position: 'relative', overflow: 'hidden' },
+  bgOrb1: {
+    position: 'fixed', top: '-15%', right: '-10%',
+    width: '600px', height: '600px', borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)',
+    pointerEvents: 'none', zIndex: 0,
   },
-  navTitle: { color: 'white', margin: 0, fontSize: '1.25rem' },
-  navLinks: { display: 'flex', gap: '1rem', alignItems: 'center' },
-  navLink: { color: 'white', textDecoration: 'none', fontSize: '0.9rem' },
-  navButton: {
-    backgroundColor: 'transparent', color: 'white',
-    border: '1px solid white', borderRadius: '6px',
-    padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.9rem',
+  bgOrb2: {
+    position: 'fixed', bottom: '-20%', left: '-10%',
+    width: '500px', height: '500px', borderRadius: '50%',
+    background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)',
+    pointerEvents: 'none', zIndex: 0,
   },
-  main: { padding: '2rem' },
-  statsGrid: {
-    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '1rem', marginBottom: '2rem',
-  },
-  statCard: {
-    backgroundColor: 'white', borderRadius: '12px',
-    padding: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-  },
-  statNumber: { fontSize: '2rem', fontWeight: 700, color: '#4f46e5' },
-  statLabel: { fontSize: '0.85rem', color: '#718096' },
-  tableHeader: {
+  main: { maxWidth: '1280px', margin: '0 auto', padding: '2.5rem 2rem 4rem', position: 'relative', zIndex: 1 },
+  header: {
     display: 'flex', justifyContent: 'space-between',
-    alignItems: 'center', marginBottom: '1rem',
+    alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem',
   },
-  tableTitle: { margin: 0, color: '#1a202c' },
+  eyebrow: { fontSize: '0.75rem', fontWeight: 600, color: '#818cf8', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem' },
+  title: { fontFamily: 'Manrope, sans-serif', fontSize: '2rem', fontWeight: 800, color: 'white', letterSpacing: '-0.03em', marginBottom: '0.35rem' },
+  subtitle: { color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem' },
   createBtn: {
-    backgroundColor: '#4f46e5', color: 'white',
-    padding: '0.6rem 1.25rem', borderRadius: '8px',
-    textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
+    padding: '0.7rem 1.4rem',
+    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+    color: 'white', border: 'none', borderRadius: '10px',
+    fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer',
+    textDecoration: 'none', display: 'inline-block',
+    boxShadow: '0 4px 15px rgba(99,102,241,0.3)',
+    fontFamily: 'Manrope, sans-serif',
   },
-  tableWrapper: {
-    backgroundColor: 'white', borderRadius: '12px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)', overflow: 'hidden',
+  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' },
+  statCard: {
+    borderRadius: '16px', padding: '1.25rem',
+    display: 'flex', flexDirection: 'column', gap: '0.35rem',
+    backdropFilter: 'blur(12px)',
+  },
+  statTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' },
+  statIcon: { fontSize: '1.25rem' },
+  statValue: { fontFamily: 'Manrope, sans-serif', fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.03em' },
+  statLabel: { color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', fontWeight: 600 },
+  statSub: { color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' },
+  occupancyCard: {
+    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '16px', padding: '1.5rem', marginBottom: '2rem',
+    backdropFilter: 'blur(12px)',
+  },
+  occupancyHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' },
+  occupancyLabel: { color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem', fontWeight: 600 },
+  occupancyPct: { fontFamily: 'Manrope, sans-serif', fontSize: '1.1rem', fontWeight: 800 },
+  barBg: { height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden', marginBottom: '0.75rem' },
+  barFill: { height: '100%', borderRadius: '999px', transition: 'width 0.6s cubic-bezier(.22,1,.36,1)' },
+  occupancyFooter: { display: 'flex', justifyContent: 'space-between' },
+  occupancySub: { color: 'rgba(255,255,255,0.25)', fontSize: '0.78rem' },
+  tableSection: {},
+  tableTitle: { fontFamily: 'Manrope, sans-serif', fontSize: '1.1rem', fontWeight: 700, color: 'rgba(255,255,255,0.6)', marginBottom: '1rem', letterSpacing: '-0.01em' },
+  loadingWrap: { display: 'flex', flexDirection: 'column', gap: '0.75rem' },
+  skeleton: {
+    height: '72px', borderRadius: '12px',
+    background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%)',
+    backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite',
+  },
+  empty: { textAlign: 'center', padding: '4rem 2rem' },
+  emptyIcon: { fontSize: '3rem', marginBottom: '1rem' },
+  emptyText: { color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem', fontSize: '0.95rem' },
+  tableWrap: {
+    background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: '16px', overflow: 'hidden', backdropFilter: 'blur(12px)',
   },
   table: { width: '100%', borderCollapse: 'collapse' },
-  thead: { backgroundColor: '#f7fafc' },
   th: {
-    padding: '1rem', textAlign: 'left',
-    fontSize: '0.85rem', color: '#4a5568',
-    fontWeight: 600, borderBottom: '1px solid #e2e8f0',
+    padding: '1rem 1.25rem', textAlign: 'left',
+    fontSize: '0.75rem', fontWeight: 700,
+    color: 'rgba(255,255,255,0.3)', letterSpacing: '0.06em', textTransform: 'uppercase',
+    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    background: 'rgba(255,255,255,0.02)',
   },
-  tr: { borderBottom: '1px solid #e2e8f0' },
-  td: { padding: '1rem', fontSize: '0.9rem', color: '#2d3748' },
-  eventName: { fontWeight: 600 },
-  eventCategory: { fontSize: '0.8rem', color: '#718096', marginTop: '0.2rem' },
-  badge: { padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 },
-  actions: { display: 'flex', gap: '0.5rem' },
+  tr: { borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' },
+  td: { padding: '1rem 1.25rem', verticalAlign: 'middle' },
+  eventName: { fontWeight: 600, color: 'white', fontSize: '0.9rem', marginBottom: '0.3rem' },
+  eventTags: { display: 'flex', gap: '0.4rem', flexWrap: 'wrap' },
+  tag: {
+    padding: '0.15rem 0.6rem', borderRadius: '999px',
+    fontSize: '0.7rem', fontWeight: 600,
+    background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+  },
+  dateText: { color: 'rgba(255,255,255,0.7)', fontSize: '0.85rem', marginBottom: '0.2rem' },
+  locationText: { color: 'rgba(255,255,255,0.3)', fontSize: '0.78rem' },
+  occWrap: { display: 'flex', flexDirection: 'column', gap: '0.3rem' },
+  occCount: { fontFamily: 'Manrope, sans-serif', fontSize: '0.9rem', fontWeight: 700 },
+  miniBarBg: { height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '999px', overflow: 'hidden' },
+  miniBarFill: { height: '100%', borderRadius: '999px' },
+  pctText: { fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)' },
+  statusBadge: { padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 600 },
+  actions: { display: 'flex', gap: '0.4rem', alignItems: 'center' },
   editBtn: {
-    padding: '0.35rem 0.75rem', backgroundColor: '#ebf8ff',
-    color: '#2b6cb0', borderRadius: '6px',
-    textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600,
+    padding: '0.4rem 0.8rem',
+    background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.2)',
+    borderRadius: '7px', color: '#818cf8',
+    fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
   },
   cancelBtn: {
-    padding: '0.35rem 0.75rem', backgroundColor: '#fffbeb',
-    color: '#b7791f', border: 'none', borderRadius: '6px',
-    cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+    padding: '0.4rem 0.8rem',
+    background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)',
+    borderRadius: '7px', color: '#fbbf24',
+    fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
   },
   deleteBtn: {
-    padding: '0.35rem 0.75rem', backgroundColor: '#fff5f5',
-    color: '#c53030', border: 'none', borderRadius: '6px',
-    cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
+    padding: '0.4rem 0.6rem',
+    background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+    borderRadius: '7px', color: '#f87171',
+    fontSize: '0.78rem', cursor: 'pointer',
   },
-  empty: { color: '#718096', textAlign: 'center', padding: '2rem' },
 };
 
 export default Dashboard;
