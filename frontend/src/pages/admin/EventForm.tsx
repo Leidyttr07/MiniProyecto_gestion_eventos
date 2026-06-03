@@ -149,13 +149,15 @@ const EventForm = () => {
 
                 <div style={s.row}>
                   <div style={s.field}>
-                    <label style={s.label}>Lugar</label>
+                    <label style={s.label}>Lugar *</label>
                     <input
-                      style={s.input}
+                      style={{ ...s.input, ...(errors.location ? s.inputErr : {}) }}
                       placeholder="Ej: Auditorio principal, Bloque A"
-                      {...register('location')}
+                      {...register('location', { required: 'El lugar es obligatorio' })}
                     />
+                    {errors.location && <span style={s.fieldErr}>{errors.location.message}</span>}
                   </div>
+
                   <div style={{ ...s.field, flex: '0 0 160px' }}>
                     <label style={s.label}>Capacidad *</label>
                     <input
@@ -184,6 +186,9 @@ const EventForm = () => {
                       <option value="Seminario">Seminario</option>
                       <option value="Taller">Taller</option>
                       <option value="Conferencia">Conferencia</option>
+                      <option value="Congreso">Congreso</option>
+                      <option value="Webinar">Webinar</option>
+                      <option value="Otro">Otro</option>
                     </select>
                   </div>
                   <div style={s.field}>

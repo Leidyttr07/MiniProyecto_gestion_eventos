@@ -12,6 +12,15 @@ export class User {
   @Column({ length: 100 })
   name: string;
 
+  @Column({ length: 100, nullable: true })
+  last_name?: string;
+
+  @Column({ length: 20, nullable: true })
+  student_code?: string;
+
+  @Column({ length: 150, nullable: true })
+  program?: string;
+
   @Column({ length: 150, unique: true })
   email: string;
 

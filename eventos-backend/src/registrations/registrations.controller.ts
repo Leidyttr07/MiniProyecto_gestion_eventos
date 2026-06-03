@@ -1,6 +1,6 @@
 import {
   Controller, Post, Put, Get,
-  Param, Body, UseGuards
+  Param, Body, UseGuards, Delete
 } from '@nestjs/common';
 import { RegistrationsService } from './registrations.service';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
@@ -44,5 +44,12 @@ export class RegistrationsController {
   @Roles('admin')
   findByEvent(@Param('eventId') eventId: string) {
     return this.registrationsService.findByEvent(+eventId);
+  }
+  // Eliminar inscrito (solo admin)
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('admin')
+  removeByAdmin(@Param('id') id: string) {
+    return this.registrationsService.removeByAdmin(+id);
   }
 }

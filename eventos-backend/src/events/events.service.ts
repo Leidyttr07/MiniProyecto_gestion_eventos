@@ -20,6 +20,17 @@ export class EventsService {
     });
   }
 
+  async decrementSpots(eventId: number) {
+    await this.repo.decrement({ id: eventId }, 'available_spots', 1);
+  }
+
+  async incrementSpots(eventId: number) {
+    const event = await this.findOne(eventId);
+    if (event.available_spots < event.capacity) {
+      await this.repo.increment({ id: eventId }, 'available_spots', 1);
+    }
+  }
+
   async findOne(id: number) {
     const event = await this.repo.findOne({ where: { id } });
     if (!event) throw new NotFoundException('Evento no encontrado');
@@ -65,4 +76,5 @@ export class EventsService {
   await this.repo.update(id, { status: 'cancelled' });
   return this.findOne(id);
   }
+
 }

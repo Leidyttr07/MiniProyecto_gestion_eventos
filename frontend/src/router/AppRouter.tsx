@@ -4,19 +4,20 @@ import { useAuth } from '../context/AuthContext';
 import Login from '../pages/Login';
 import Register from '../pages/Register';
 import Events from '../pages/Events';
-import EventDetail from  '../pages/EventDetail';
+import EventDetail from '../pages/EventDetail';
 import MyRegistrations from '../pages/MyRegistrations';
 import Dashboard from '../pages/admin/Dashboard';
 import EventForm from '../pages/admin/EventForm';
 
-
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading } = useAuth();
+  if (loading) return null;
   return isAdmin ? children : <Navigate to="/login" />;
 };
 

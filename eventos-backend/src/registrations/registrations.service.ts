@@ -16,13 +16,6 @@ export class RegistrationsService {
     private eventsService: EventsService,
   ) {}
 
-  private findOneById(id: number) {
-    return this.repo.findOne({
-      where: { id },
-      relations: { user: true, event: true },
-    });
-  }
-
   async create(dto: CreateRegistrationDto, userId: number) {
     const event = await this.eventsService.findOne(dto.event_id);
 
@@ -34,7 +27,6 @@ export class RegistrationsService {
       throw new BadRequestException('No hay cupos disponibles');
     }
 
-    // Solo verificar inscripciones activas
     const existing = await this.repo.findOne({
       where: {
         user: { id: userId },
@@ -53,7 +45,8 @@ export class RegistrationsService {
     });
 
     const saved = await this.repo.save(registration);
-    return this.findOneById(saved.id);
+    await this.eventsService.decrementSpots(dto.event_id); // ← descuenta cupo
+    return saved;
   }
 
   async cancel(registrationId: number, userId: number) {
@@ -76,7 +69,8 @@ export class RegistrationsService {
 
     registration.status = 'cancelled';
     const saved = await this.repo.save(registration);
-    return this.findOneById(saved.id);
+    await this.eventsService.incrementSpots(registration.event.id); // ← devuelve cupo
+    return saved;
   }
 
   findMyRegistrations(userId: number) {
@@ -92,5 +86,26 @@ export class RegistrationsService {
       where: { event: { id: eventId }, status: 'active' },
       relations: { user: true },
     });
+  }
+
+  async removeByAdmin(registrationId: number) {
+    const registration = await this.repo.findOne({
+      where: { id: registrationId },
+      relations: { user: true, event: true },
+    });
+
+    if (!registration) {
+      throw new NotFoundException('Inscripción no encontrada');
+    }
+
+    if (registration.status === 'cancelled') {
+      throw new BadRequestException('La inscripción ya fue cancelada');
+    }
+
+    registration.status = 'cancelled';
+    registration.removed_by_admin = true;
+    const saved = await this.repo.save(registration);
+    await this.eventsService.incrementSpots(registration.event.id);
+    return saved;
   }
 }

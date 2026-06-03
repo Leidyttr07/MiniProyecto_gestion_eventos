@@ -16,6 +16,7 @@ interface AuthContextType {
   logoutUser: () => Promise<void>;
   isAdmin: boolean;
   isAuthenticated: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
@@ -31,6 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
     }
+    setLoading(false);
   }, []);
 
   const loginUser = (token: string, user: User) => {
@@ -44,7 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await apiLogout();
     } catch (err) {
-      // ignore server errors — proceed to clear client state
+      // ignore server errors
     }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -60,6 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       logoutUser,
       isAdmin: user?.role === 'admin',
       isAuthenticated: !!token,
+      loading,
     }}>
       {children}
     </AuthContext.Provider>

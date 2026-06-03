@@ -23,4 +23,7 @@ export class Registration {
 
   @CreateDateColumn()
   registered_at: Date;
+
+  @Column({ default: false })
+  removed_by_admin: boolean;
 }

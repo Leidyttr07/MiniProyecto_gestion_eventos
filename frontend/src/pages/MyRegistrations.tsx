@@ -9,9 +9,17 @@ const MyRegistrations = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getMyRegistrations()
-      .then(res => setRegistrations(res.data))
-      .finally(() => setLoading(false));
+    const fetchRegistrations = () => {
+      getMyRegistrations()
+        .then(res => setRegistrations(res.data))
+        .finally(() => setLoading(false));
+    };
+
+    fetchRegistrations(); // carga inicial
+
+    const interval = setInterval(fetchRegistrations, 5000); // actualiza cada 5 segundos
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleCancel = async (id: number) => {
@@ -104,23 +112,33 @@ const MyRegistrations = () => {
 
 const RegistrationCard = ({ reg, onCancel, onNavigate }: { reg: any; onCancel: (id: number) => void; onNavigate: (path: string) => void }) => {
   const isActive = reg.status === 'active';
+  const removedByAdmin = reg.removed_by_admin;
   const event = reg.event;
 
   return (
-    <div style={card.wrap}>
+    <div style={{
+      ...card.wrap,
+      borderColor: removedByAdmin ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)',
+    }}>
       <div style={card.left}>
         <div style={card.topRow}>
           <span style={{
             ...card.badge,
-            background: isActive ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)',
+            background: isActive ? 'rgba(16,185,129,0.12)' : removedByAdmin ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.1)',
             color: isActive ? '#10b981' : '#f87171',
           }}>
-            {isActive ? '● Activo' : '● Cancelado'}
+            {isActive ? '● Activo' : removedByAdmin ? '● Removido por el organizador' : '● Cancelado'}
           </span>
           {event.event_type && (
             <span style={card.typeBadge}>{event.event_type}</span>
           )}
         </div>
+
+        {removedByAdmin && (
+          <div style={card.adminNotice}>
+            ⚠️ El organizador del evento te ha removido de la lista de participantes.
+          </div>
+        )}
 
         <h3 style={card.title}>{event.title}</h3>
 
@@ -276,6 +294,15 @@ const card: Record<string, React.CSSProperties> = {
     fontSize: '0.82rem', fontWeight: 600,
     cursor: 'pointer', whiteSpace: 'nowrap',
   },
+  adminNotice: {
+  background: 'rgba(239,68,68,0.08)',
+  border: '1px solid rgba(239,68,68,0.2)',
+  borderRadius: '8px',
+  padding: '0.6rem 0.9rem',
+  color: '#fca5a5',
+  fontSize: '0.82rem',
+  lineHeight: 1.5,
+},
 };
 
 export default MyRegistrations;

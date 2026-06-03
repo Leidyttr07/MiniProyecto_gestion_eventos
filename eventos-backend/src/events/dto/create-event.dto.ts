@@ -19,7 +19,6 @@ export class CreateEventDto {
   end_date: string = '';
 
   @IsString()
-  @IsOptional()
   location?: string;
 
   @IsInt()

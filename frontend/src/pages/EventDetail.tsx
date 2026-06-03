@@ -16,10 +16,9 @@ const EventDetail = () => {
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
-    getEvent(Number(id))
-      .then(res => setEvent(res.data))
-      .finally(() => setLoading(false));
+useEffect(() => {
+  const fetchData = () => {
+    getEvent(Number(id)).then(res => setEvent(res.data));
 
     if (isAuthenticated && !isAdmin) {
       getMyRegistrations().then(res => {
@@ -27,7 +26,14 @@ const EventDetail = () => {
         setMyRegistration(reg || null);
       });
     }
-  }, [id, isAuthenticated, isAdmin]);
+  };
+
+  fetchData();
+  setLoading(false);
+
+  const interval = setInterval(fetchData, 5000);
+  return () => clearInterval(interval);
+}, [id, isAuthenticated, isAdmin]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }

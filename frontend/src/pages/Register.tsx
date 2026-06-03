@@ -3,23 +3,55 @@ import { useNavigate, Link } from 'react-router-dom';
 import { register as registerUser } from '../api/auth';
 import { useState } from 'react';
 
-interface RegisterForm { name: string; email: string; password: string; confirmPassword: string; }
+interface RegisterForm { 
+  name: string; 
+  last_name: string;
+  email: string; 
+  password: string; 
+  confirmPassword: string;
+  student_code: string;
+  program: string;
+}
 
 const Register = () => {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterForm>();
+  const {
+  register,
+  handleSubmit,
+  watch,
+  formState: { errors }
+  } = useForm<RegisterForm>({
+    mode: 'onChange'
+  });
+
+  const password = watch('password', '');
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (data: RegisterForm) => {
-    try {
-      setLoading(true); setError('');
-      await registerUser({ name: data.name, email: data.email, password: data.password });
-      navigate('/login');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrarse');
-    } finally { setLoading(false); }
-  };
+const onSubmit = async (data: RegisterForm) => {
+  try {
+    setLoading(true); setError('');
+    await registerUser({ 
+      name: data.name, 
+      last_name: data.last_name,
+      email: data.email, 
+      password: data.password,
+      student_code: data.student_code,
+      program: data.program,
+    });
+    navigate('/login');
+  } catch (err: any) {
+    setError(err.response?.data?.message || 'Error al registrarse');
+  } finally { setLoading(false); }
+};
+
+  const passwordStrength = [
+    password.length >= 8,
+    /[A-Z]/.test(password),
+    /[a-z]/.test(password),
+    /\d/.test(password),
+    /[@$!%*?&.#_-]/.test(password),
+  ].filter(Boolean).length;
 
   return (
     <div style={s.page}>
@@ -84,6 +116,47 @@ const Register = () => {
             </div>
 
             <div style={s.field}>
+              <label style={s.label}>Apellido</label>
+              <div style={s.inputWrap}>
+                <span style={s.inputIcon}>👤</span>
+                <input
+                  style={{ ...s.input, ...(errors.last_name ? s.inputErr : {}) }}
+                  placeholder="Pérez García"
+                  {...register('last_name', { required: 'El apellido es obligatorio' })}
+                />
+              </div>
+              {errors.last_name && <span style={s.fieldErr}>{errors.last_name.message}</span>}
+            </div>
+
+            <div style={s.field}>
+              <label style={s.label}>Código estudiantil</label>
+              <div style={s.inputWrap}>
+                <span style={s.inputIcon}>🎫</span>
+                <input
+                  style={{ ...s.input, ...(errors.student_code ? s.inputErr : {}) }}
+                  placeholder="Ej: 123456789"
+                  {...register('student_code', { required: 'El código es obligatorio' })}
+                />
+              </div>
+              {errors.student_code && <span style={s.fieldErr}>{errors.student_code.message}</span>}
+            </div>
+
+            <div style={s.field}>
+              <label style={s.label}>Programa académico</label>
+              <select
+                style={{ ...s.input, paddingLeft: '1rem', ...(errors.program ? s.inputErr : {}) }}
+                {...register('program', { required: 'Selecciona tu programa' })}
+              >
+                <option value="">Seleccionar programa...</option>
+                <option value="Ingeniería de Sistemas">Ingeniería de Sistemas</option>
+                <option value="Ingeniería Electrónica y Telecomunicaciones">Ingeniería Electrónica y Telecomunicaciones</option>
+                <option value="Ingeniería Automática Industrial">Ingeniería Automática Industrial</option>
+              </select>
+              {errors.program && <span style={s.fieldErr}>{errors.program.message}</span>}
+            </div>
+
+
+            <div style={s.field}>
               <label style={s.label}>Correo electrónico</label>
               <div style={s.inputWrap}>
                 <span style={s.inputIcon}>✉</span>
@@ -102,21 +175,131 @@ const Register = () => {
 
             <div style={s.row}>
               <div style={s.field}>
-                <label style={s.label}>Contraseña</label>
-                <div style={s.inputWrap}>
-                  <span style={s.inputIcon}>🔒</span>
-                  <input
-                    style={{ ...s.input, ...(errors.password ? s.inputErr : {}) }}
-                    type="password"
-                    placeholder="Mín. 6 caracteres"
-                    {...register('password', {
-                      required: 'Obligatorio',
-                      minLength: { value: 6, message: 'Mínimo 6 caracteres' }
-                    })}
-                  />
-                </div>
-                {errors.password && <span style={s.fieldErr}>{errors.password.message}</span>}
-              </div>
+  <label style={s.label}>Contraseña</label>
+
+  <div style={s.inputWrap}>
+    <span style={s.inputIcon}>🔒</span>
+
+    <input
+      style={{ ...s.input, ...(errors.password ? s.inputErr : {}) }}
+      type="password"
+      placeholder="Ej: Unicauca2026!"
+      {...register('password', {
+        required: 'La contraseña es obligatoria',
+
+        minLength: {
+          value: 8,
+          message: 'Debe tener mínimo 8 caracteres'
+        },
+
+        validate: {
+          hasUppercase: value =>
+            /[A-Z]/.test(value) ||
+            'Debe contener una mayúscula',
+
+          hasLowercase: value =>
+            /[a-z]/.test(value) ||
+            'Debe contener una minúscula',
+
+          hasNumber: value =>
+            /\d/.test(value) ||
+            'Debe contener un número',
+
+          hasSpecial: value =>
+            /[@$!%*?&.#_-]/.test(value) ||
+            'Debe contener un carácter especial',
+
+          noSpaces: value =>
+            !/\s/.test(value) ||
+            'No puede contener espacios'
+        }
+      })}
+    />
+  </div>
+
+  {errors.password && (
+    <span style={s.fieldErr}>
+      {errors.password.message}
+    </span>
+  )}
+
+  <div style={s.strengthContainer}>
+    <div
+      style={{
+        ...s.strengthBar,
+        width: `${passwordStrength * 20}%`,
+        background:
+          passwordStrength <= 2
+            ? '#ef4444'
+            : passwordStrength <= 4
+            ? '#f59e0b'
+            : '#22c55e'
+      }}
+    />
+  </div>
+
+  <div style={s.passwordHints}>
+    <div
+      style={{
+        ...s.passwordRule,
+        color:
+          password.length >= 8
+            ? '#4ade80'
+            : 'rgba(255,255,255,0.45)'
+      }}
+    >
+      ✓ Mínimo 8 caracteres
+    </div>
+
+    <div
+      style={{
+        ...s.passwordRule,
+        color:
+          /[A-Z]/.test(password)
+            ? '#4ade80'
+            : 'rgba(255,255,255,0.45)'
+      }}
+    >
+      ✓ Una mayúscula
+    </div>
+
+    <div
+      style={{
+        ...s.passwordRule,
+        color:
+          /[a-z]/.test(password)
+            ? '#4ade80'
+            : 'rgba(255,255,255,0.45)'
+      }}
+    >
+      ✓ Una minúscula
+    </div>
+
+    <div
+      style={{
+        ...s.passwordRule,
+        color:
+          /\d/.test(password)
+            ? '#4ade80'
+            : 'rgba(255,255,255,0.45)'
+      }}
+    >
+      ✓ Un número
+    </div>
+
+    <div
+      style={{
+        ...s.passwordRule,
+        color:
+          /[@$!%*?&.#_-]/.test(password)
+            ? '#4ade80'
+            : 'rgba(255,255,255,0.45)'
+      }}
+    >
+      ✓ Un carácter especial
+    </div>
+  </div>
+</div>
 
               <div style={s.field}>
                 <label style={s.label}>Confirmar</label>

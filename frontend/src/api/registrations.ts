@@ -1,5 +1,8 @@
 import api from './client';
 
+export const getRegistrationsByEvent = (eventId: number) => 
+  api.get(`/registrations/event/${eventId}`);
+
 export const registerToEvent = (event_id: number) =>
   api.post('/registrations', { event_id });
 
@@ -11,3 +14,6 @@ export const getMyRegistrations = () =>
 
 export const getEventAttendees = (eventId: number) =>
   api.get(`/registrations/event/${eventId}`);
+
+export const removeRegistrationByAdmin = (id: number) => 
+  api.delete(`/registrations/${id}`);

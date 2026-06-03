@@ -173,13 +173,13 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: '1.2rem',
   },
   logoText: {
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'Manrope, sans-serif',
     fontSize: '0.95rem', fontWeight: 700,
     color: 'rgba(255,255,255,0.9)',
     letterSpacing: '-0.01em',
   },
   headline: {
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'Manrope, sans-serif',
     fontSize: '3.5rem', fontWeight: 800,
     color: 'rgba(255,255,255,0.95)',
     lineHeight: 1.1,
@@ -243,7 +243,7 @@ const s: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase', marginBottom: '0.5rem',
   },
   title: {
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'Manrope, sans-serif',
     fontSize: '2rem', fontWeight: 800,
     color: 'white', marginBottom: '0.4rem',
     letterSpacing: '-0.03em',
@@ -300,7 +300,7 @@ const s: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     cursor: 'pointer',
     marginTop: '0.5rem',
-    fontFamily: 'Syne, sans-serif',
+    fontFamily: 'Manrope, sans-serif',
     letterSpacing: '-0.01em',
     transition: 'all 0.2s',
     boxShadow: '0 4px 20px rgba(99,102,241,0.4)',
