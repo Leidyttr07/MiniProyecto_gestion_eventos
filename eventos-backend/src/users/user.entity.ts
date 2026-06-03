@@ -7,10 +7,10 @@ import { Exclude } from 'class-transformer';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @Column({ length: 100 })
-  name: string;
+  name!: string;
 
   @Column({ length: 100, nullable: true })
   last_name?: string;
@@ -22,20 +22,20 @@ export class User {
   program?: string;
 
   @Column({ length: 150, unique: true })
-  email: string;
+  email!: string;
 
   @Column()
   @Exclude()
-  password: string;
+  password!: string;
 
   @Column({ default: 'participant' })
-  role: 'admin' | 'participant';
+  role!: 'admin' | 'participant';
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 
   @Column({ nullable: true })
   @Exclude()

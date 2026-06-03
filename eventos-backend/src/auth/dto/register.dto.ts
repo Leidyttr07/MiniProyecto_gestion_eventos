@@ -10,7 +10,7 @@ import {
 export class RegisterDto {
   @IsString()
   @MaxLength(100)
-  name: string;
+  name!: string;
 
   @IsString()
   @IsOptional()
@@ -28,7 +28,7 @@ export class RegisterDto {
   program?: string;
 
   @IsEmail()
-  email: string;
+  email!: string;
 
   @IsString()
   @MinLength(8, { message: 'La contraseña debe tener mínimo 8 caracteres' })
@@ -37,5 +37,5 @@ export class RegisterDto {
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.#_-])[A-Za-z\d@$!%*?&.#_-]+$/,
     { message: 'La contraseña debe contener mayúscula, minúscula, número y carácter especial' }
   )
-  password: string;
+  password!: string;
 }

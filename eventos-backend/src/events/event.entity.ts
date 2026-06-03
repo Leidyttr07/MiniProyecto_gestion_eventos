@@ -36,7 +36,7 @@ export class Event {
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'organizer_id' })
-  organizer: User;
+  organizer!: User;
 
   @CreateDateColumn()
   created_at: Date = new Date();

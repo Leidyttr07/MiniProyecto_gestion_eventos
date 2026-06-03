@@ -8,22 +8,22 @@ import { Event } from '../events/event.entity';
 @Entity('registrations')
 export class Registration {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number;
 
   @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 
   @ManyToOne(() => Event, { eager: true })
   @JoinColumn({ name: 'event_id' })
-  event: Event;
+  event!: Event;
 
   @Column({ default: 'active' })
-  status: 'active' | 'cancelled';
+  status!: 'active' | 'cancelled';
 
   @CreateDateColumn()
-  registered_at: Date;
+  registered_at!: Date;
 
   @Column({ default: false })
-  removed_by_admin: boolean;
+  removed_by_admin!: boolean;
 }
